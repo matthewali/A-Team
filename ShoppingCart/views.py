@@ -1,13 +1,12 @@
 import json
-
 from django.shortcuts import render, redirect
 from .models import Order, OrderItem
+from myapi.models import BookDetails
 from django.http import HttpResponse
 
 
 # Create your views here.
 def retrieve(response, userid):
-    # userid = response.user.id
     order = Order.objects.get(id=userid)
     books = []
 
@@ -19,72 +18,35 @@ def retrieve(response, userid):
     return HttpResponse(jbooks)
 
 
-def delete_order_item(request, orderitemid, userid):
-    #     userid = request.user.id
+def update(response, userid, bookid):
     order = Order.objects.get(id=userid)
-    orderitem = OrderItem.objects.get(id=orderitemid)
+    book = BookDetails.objects.get(id=bookid)
 
-    if request.method == "POST":
-        orderitem.delete()
-        order.save()
-        return redirect('/Order/')
+    for item in order.orderitem_set.all():
+        if item.book == book:
+            item.amount = item.amount + 1
+            item.save()
+            order.save()
+            return HttpResponse("Amount of Book increased!")
+
+    order_item = OrderItem.objects.all()
+    order_item.create(order=order, book=book, amount=1, bought=False, saved=False)
+
+    return HttpResponse("Book Added!")
 
 
-#
-#
-# def save_for_later(request, cartitemid):
-#     userid = request.user.id
-#     cart = ShoppingCart.objects.get(id=userid)
-#     cartitem = ShoppingCartItem.objects.get(id=cartitemid)
-#
-#     if request.method == "POST":
-#         cartitem.savedforlater = True
-#         cartitem.save()
-#
-#     cart.save()
-#
-#     return redirect('/ShoppingCart/')
-#
-#
-# def move_to_cart(request, cartitemid):
-#     userid = request.user.id
-#     cart = ShoppingCart.objects.get(id=userid)
-#     cartitem = ShoppingCartItem.objects.get(id=cartitemid)
-#
-#     if request.method == "POST":
-#         cartitem.savedforlater = False
-#         cartitem.save()
-#
-#     cart.save()
-#
-#     return redirect('/ShoppingCart/')
-#
-#
-# def update_quantity(request, cartitemid):
-#     userid = request.user.id
-#     cart = ShoppingCart.objects.get(id=userid)
-#     cartitem = ShoppingCartItem.objects.get(id=cartitemid)
-#
-#     if request.method == "POST":
-#         newquantity = request.POST['UpdateValue']
-#         if int(newquantity) <= 0:
-#             raise Exception("new quantity must be greater than 0")
-#         cartitem.quantity = newquantity
-#         cartitem.save()
-#         cart.save()
-#
-#     return redirect('/ShoppingCart/')
-#
-#
-# def checkout(request):
-#     userid = request.user.id
-#     cart = ShoppingCart.objects.get(id=userid)
-#
-#     if request.method == "POST":
-#         for item in cart.shoppingcartitem_set.all():
-#             if not item.savedforlater:
-#                 item.ordered = True
-#                 item.save()
-#                 cart.save()
-#
-#     return redirect('/ShoppingCart/')
+def delete_order_item(request, orderitemid, userid):
+    order = Order.objects.get(id=userid)
+    order_item = OrderItem.objects.get(id=orderitemid)
+
+    if order_item.amount > 1:
+        order_item.amount = order_item.amount - 1
+        order_item.save()
+    else:
+        order_item.delete()
+
+    order.save()
+
+    return HttpResponse("1 Book removed!")
+
+    #return redirect('/Order/')
