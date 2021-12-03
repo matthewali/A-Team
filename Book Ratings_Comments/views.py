@@ -1,16 +1,23 @@
+from django.db.models.aggregates import Avg
+from django.db.models.query import QuerySet
+from django.utils.html import avoid_wrapping
 from .forms import CreateUserForm
 from .forms import CreateRatingForm
 from .models import Book, BookRating
-from .serializers import BookSerializer, RatingSerializer
+from .serializers import BookSerializer, RatingSerializer, StatSerializer
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models.signals import post_save
+from django.views import generic
 from rest_framework import generics, response
 from typing import ContextManager
+
+from bookstore import serializers
 # Create your views here.
 class Booklist(generics.ListCreateAPIView):
     queryset = Book.objects.all()
@@ -28,6 +35,10 @@ class RatingsDetails(generics.RetrieveUpdateDestroyAPIView):
     queryset = BookRating.objects.all()
     serializer_class = RatingSerializer
 
+class BookStats(generics.ListCreateAPIView):
+    queryset = BookRating.objects.all().order_by('-num_stars')
+    serializer_class = StatSerializer
+
 def registerPage(request):
     form = UserCreationForm()
     if request.method == 'POST':
@@ -35,7 +46,8 @@ def registerPage(request):
         if form.is_valid():
             form.save()
             user = form.cleaned_data.get('username')
-            messages.success(request, 'Account created for ' + user)
+            success_message = 'Thank you for registering! Please log in to access site.'
+            return redirect('index')
 
     context = {'form':form}
     return render(request, 'bookstore/register.html', context)
@@ -73,3 +85,6 @@ def logout_request(request):
     logout(request)
     messages.info(request, "You have successfully logged out.")
     return redirect("login")
+
+def indexPage(request):
+    return render(request, 'bookstore/index.html')
