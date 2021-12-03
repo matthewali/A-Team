@@ -13,4 +13,6 @@ urlpatterns = [
     path("ratings/<int:pk>", views.RatingsDetails.as_view()),
     path("logout", views.logout_request, name="logout"),
     path("index/", views.indexPage, name='index'),
+    path('reviews/', views.user_review),
+    path('reviews/<int:pk>/', views.review_detail),
 ]

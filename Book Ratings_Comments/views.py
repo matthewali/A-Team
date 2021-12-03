@@ -1,23 +1,24 @@
 from django.db.models.aggregates import Avg
 from django.db.models.query import QuerySet
 from django.utils.html import avoid_wrapping
-from .forms import CreateUserForm
-from .forms import CreateRatingForm
+from .forms import CreateUserForm, CreateRatingForm
 from .models import Book, BookRating
 from .serializers import BookSerializer, RatingSerializer, StatSerializer
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models.signals import post_save
 from django.views import generic
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, response
+from rest_framework.parsers import JSONParser
 from typing import ContextManager
-
 from bookstore import serializers
+
 # Create your views here.
 class Booklist(generics.ListCreateAPIView):
     queryset = Book.objects.all()
@@ -88,3 +89,41 @@ def logout_request(request):
 
 def indexPage(request):
     return render(request, 'bookstore/index.html')
+
+@csrf_exempt
+def user_review(request):
+    if request.method == "GET":
+        reviews = BookRating.objects.all()
+        serializer = RatingSerializer(reviews, many=True)
+        return JsonResponse(serializer.data, safe=False)
+
+    elif request.method == "POST":
+        data = JSONParser().parse(request)
+        serializer = RatingSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(serializer.data, status=201)
+        return JsonResponse(serializer.errors, status=400)
+
+@csrf_exempt
+def review_detail(request, pk):
+    try:
+        review = BookRating.objects.get(pk=pk)
+    except BookRating.DoesNotExist:
+        return HttpResponse(status=404)
+
+    if request.method == "GET":
+        serializer = RatingSerializer(review)
+        return JsonResponse(serializer.data)
+    
+    elif request.method == "PUT":
+        data = JSONParser().parse(request)
+        serializer = RatingSerializer(review, data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponse(serializer.data)
+        return JsonResponse(serializer.errors, status=400)
+
+    elif request.method == "DELETE":
+        review.delete()
+        return HttpResponse(status=204)
